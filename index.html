@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard Keuangan Keluarga</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: light; }
+    body { background-color: #f1f5f9; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <div class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+
+    <!-- HEADER -->
+    <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">Dashboard Keuangan Keluarga</h1>
+        <p class="text-sm text-slate-600">
+          Data realtime dari NocoDB (pemasukan &amp; pengeluaran).
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Preset range -->
+        <select id="filterRange"
+          class="rounded-full border border-slate-300 px-3 py-1.5 text-sm bg-white">
+          <option value="mtd">Bulan ini (MTD)</option>
+          <option value="today">Hari ini</option>
+          <option value="30d">30 hari terakhir</option>
+          <option value="ytd">Tahun ini (YTD)</option>
+          <option value="all">Semua</option>
+        </select>
+        <!-- Custom range -->
+        <div class="flex items-center gap-2 text-xs">
+          <input type="date" id="startDate" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
+          <span class="text-slate-500">s/d</span>
+          <input type="date" id="endDate" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
+          <button id="btnApplyCustom" class="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100">
+            Terapkan
+          </button>
+        </div>
+        <button id="btnRefresh"
+          class="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700">
+          Refresh Data
+        </button>
+      </div>
+    </header>
+
+    <!-- SUMMARY CARDS -->
+    <section class="grid gap-4 md:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+        <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Total Pemasukan</p>
+        <p id="totalIncome" class="mt-2 text-2xl font-bold text-emerald-700">Rp 0</p>
+      </div>
+      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+        <p class="text-xs font-semibold text-rose-600 uppercase tracking-wide">Total Pengeluaran</p>
+        <p id="totalExpense" class="mt-2 text-2xl font-bold text-rose-700">Rp 0</p>
+      </div>
+      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Saldo</p>
+        <p id="saldo" class="mt-2 text-2xl font-bold">Rp 0</p>
+        <p id="saldoLabel" class="text-xs mt-1 text-slate-500"></p>
+      </div>
+    </section>
+
+    <!-- CHARTS WRAPPER -->
+    <section class="grid gap-4 md:grid-cols-5">
+      <!-- Pie chart komposisi pengeluaran -->
+      <div class="md:col-span-3 rounded-2xl bg-white p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-sm font-semibold">Komposisi Pengeluaran</p>
+            <p class="text-xs text-slate-500">Dibagi berdasarkan kategori utama (mengikuti filter di kanan atas).</p>
+          </div>
+          <div class="flex items-center gap-1 text-[11px]">
+            <button data-charttype="pie" class="chart-type-btn rounded-full border border-slate-300 px-2 py-1 bg-slate-900 text-white">Pie</button>
+            <button data-charttype="bar" class="chart-type-btn rounded-full border border-slate-300 px-2 py-1 bg-white">Bar</button>
+          </div>
+        </div>
+        <div class="relative w-full h-64">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <button id="btnExportPie" class="self-end rounded-full border border-slate-300 px-3 py-1 text-[11px] hover:bg-slate-50">
+          Export Pie ke PNG
+        </button>
+      </div>
+
+      <!-- Time-series pemasukan vs pengeluaran -->
+      <div class="md:col-span-2 rounded-2xl bg-white p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-sm font-semibold">Arus Kas</p>
+            <p class="text-xs text-slate-500" id="timeseriesSubtitle">Per hari</p>
+          </div>
+          <select id="timeSeriesMode" class="rounded-full border border-slate-300 px-2 py-1 text-[11px] bg-white">
+            <option value="daily">Harian</option>
+            <option value="weekly">Mingguan</option>
+            <option value="monthly">Bulanan</option>
+          </select>
+        </div>
+        <div class="relative w-full h-64">
+          <canvas id="lineChart"></canvas>
+        </div>
+        <button id="btnExportLine" class="self-end rounded-full border border-slate-300 px-3 py-1 text-[11px] hover:bg-slate-50">
+          Export Grafik ke PNG
+        </button>
+      </div>
+    </section>
+
+    <!-- ANALITIK & INSIGHT -->
+    <section class="grid gap-4 md:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200 md:col-span-2">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <p class="text-sm font-semibold">Top 5 Pengeluaran</p>
+            <p class="text-xs text-slate-500">Per kategori utama pada rentang waktu terpilih.</p>
+          </div>
+        </div>
+        <ul id="topCategories" class="space-y-2 text-xs">
+          <!-- diisi via JS -->
+        </ul>
+      </div>
+      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+        <p class="text-sm font-semibold mb-2">Insight &amp; Saran Hemat</p>
+        <ul id="insightList" class="space-y-2 text-xs text-slate-700">
+          <!-- diisi via JS -->
+        </ul>
+      </div>
+    </section>
+
+    <!-- TABEL TRANSAKSI GABUNGAN -->
+    <section class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
+        <div>
+          <p class="text-sm font-semibold">Transaksi</p>
+          <p id="subtitleRange" class="text-xs text-slate-500"></p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-[11px] items-center">
+          <label class="flex items-center gap-1">
+            <span>Cari:</span>
+            <input id="searchText" type="text" placeholder="Keterangan/kategori" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
+          </label>
+          <button id="btnExportCSV" class="rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50">Export CSV</button>
+          <button id="btnPrint" class="rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50">Print</button>
+        </div>
+      </div>
+
+      <div class="max-h-[420px] overflow-auto rounded-xl border border-slate-200" id="tableScrollWrapper">
+        <table class="min-w-full text-left text-xs">
+          <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-3 py-2">Tanggal</th>
+              <th class="px-3 py-2">Jenis</th>
+              <th class="px-3 py-2">Kategori</th>
+              <th class="px-3 py-2">Keterangan</th>
+              <th class="px-3 py-2 text-right">Nominal</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="text-[11px] text-slate-700">
+            <!-- diisi via JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-[11px] text-slate-600">
+        <p id="statusMsg"></p>
+        <div class="flex items-center gap-2">
+          <button id="prevPage" class="rounded-full border border-slate-300 px-2 py-1 disabled:opacity-40">&laquo;</button>
+          <span id="pageInfo"></span>
+          <button id="nextPage" class="rounded-full border border-slate-300 px-2 py-1 disabled:opacity-40">&raquo;</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // ==========================
+    // KONFIGURASI NOCODB
+    // ==========================
+    const NOCO_TOKEN = 'Ti9jesep2TZLLfY5JeVcaSdXHUO0iTzF5LRvyv98';
+
+    const API_PENGELUARAN =
+      'https://noco.airoma.my.id/api/v2/tables/m5cx3rf5dskluid/records?offset=0&limit=1000&viewId=vwvxovwcyg5499ve';
+
+    const API_PEMASUKAN =
+      'https://noco.airoma.my.id/api/v2/tables/mpvkbeewalncg4s/records?offset=0&limit=1000&viewId=vwzkq7y69c4z1y5d';
+
+    const FIELD_MAP = {
+      id: 'IDD',
+      datetime: 'Tanggal Dan Waktu',
+      type: 'Jenis Transaksi',
+      note: 'Keterangan',
+      amount: 'Nominal (IDR)',
+      mainCategory: 'Kategori Utama',
+      subCategory: 'sub kategori'
+    };
+
+    // ==========================
+    // HELPER
+    // ==========================
+    function formatRupiah(num) {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0
+      }).format(num || 0);
+    }
+
+    function parseDate(str) {
+      if (!str) return null;
+      const d = new Date(str);
+      return isNaN(d) ? null : d;
+    }
+
+    function isSameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+
+    function startOfWeek(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = (day === 0 ? -6 : 1) - day; // Senin awal minggu
+      date.setDate(date.getDate() + diff);
+      date.setHours(0,0,0,0);
+      return date;
+    }
+
+    function startOfMonth(d) {
+      return new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+
+    async function fetchFromNoco(url) {
+      const res = await fetch(url, {
+        headers: {
+          'xc-token': NOCO_TOKEN,
+          'accept': 'application/json'
+        }
+      });
+      if (!res.ok) throw new Error('Fetch gagal: ' + res.status + ' ' + res.statusText);
+      const data = await res.json();
+      return Array.isArray(data.list) ? data.list : data;
+    }
+
+    function normalizeRecord(raw, kind) {
+      return {
+        kind,
+        id: raw[FIELD_MAP.id],
+        datetimeRaw: raw[FIELD_MAP.datetime],
+        date: parseDate(raw[FIELD_MAP.datetime]),
+        jenis: raw[FIELD_MAP.type],
+        note: raw[FIELD_MAP.note],
+        amount: Number(raw[FIELD_MAP.amount] || 0),
+        mainCategory: raw[FIELD_MAP.mainCategory],
+        subCategory: raw[FIELD_MAP.subCategory]
+      };
+    }
+
+    // ==========================
+    // STATE
+    // ==========================
+    let allRecords = [];
+    let filteredRecords = [];
+    let currentPage = 1;
+    const PAGE_SIZE = 50;
+
+    let pieChart, lineChart;
+
+    // ==========================
+    // DOM
+    // ==========================
+    const filterRangeEl = document.getElementById('filterRange');
+    const btnRefresh = document.getElementById('btnRefresh');
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    const btnApplyCustom = document.getElementById('btnApplyCustom');
+    const totalIncomeEl = document.getElementById('totalIncome');
+    const totalExpenseEl = document.getElementById('totalExpense');
+    const saldoEl = document.getElementById('saldo');
+    const saldoLabelEl = document.getElementById('saldoLabel');
+    const subtitleRangeEl = document.getElementById('subtitleRange');
+    const statusMsgEl = document.getElementById('statusMsg');
+    const tableBodyEl = document.getElementById('tableBody');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const pageInfoEl = document.getElementById('pageInfo');
+    const searchTextEl = document.getElementById('searchText');
+    const timeSeriesModeEl = document.getElementById('timeSeriesMode');
+    const timeseriesSubtitleEl = document.getElementById('timeseriesSubtitle');
+    const topCategoriesEl = document.getElementById('topCategories');
+    const insightListEl = document.getElementById('insightList');
+
+    // ==========================
+    // FILTER & RANGE
+    // ==========================
+    function applyRange(records) {
+      const mode = filterRangeEl.value;
+      const now = new Date();
+      let start = null;
+      let end = null;
+
+      if (startDateEl.value && endDateEl.value) {
+        start = new Date(startDateEl.value);
+        end = new Date(endDateEl.value);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        if (mode === 'today') {
+          start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          end = new Date(start);
+          end.setHours(23,59,59,999);
+        } else if (mode === '30d') {
+          end = new Date();
+          start = new Date();
+          start.setDate(start.getDate() - 30);
+        } else if (mode === 'mtd') {
+          start = new Date(now.getFullYear(), now.getMonth(), 1);
+          end = new Date();
+        } else if (mode === 'ytd') {
+          start = new Date(now.getFullYear(), 0, 1);
+          end = new Date();
+        }
+      }
+
+      let result = allRecords.filter(r => r.date);
+      if (start && end) {
+        result = result.filter(r => r.date >= start && r.date <= end);
+      }
+      filteredRecords = result;
+
+      let subtitle = 'Semua transaksi yang tersedia';
+      if (start && end) {
+        const s = start.toLocaleDateString('id-ID');
+        const e = end.toLocaleDateString('id-ID');
+        subtitle = `Periode ${s} s/d ${e}`;
+      }
+      subtitleRangeEl.textContent = subtitle;
+      return result;
+    }
+
+    // ==========================
+    // RENDER RINGKASAN & TABEL
+    // ==========================
+    function renderSummary(records) {
+      let totalIncome = 0;
+      let totalExpense = 0;
+      records.forEach(r => {
+        if (r.kind === 'income') totalIncome += r.amount;
+        else totalExpense += r.amount;
+      });
+      const saldo = totalIncome - totalExpense;
+
+      totalIncomeEl.textContent = formatRupiah(totalIncome);
+      totalExpenseEl.textContent = formatRupiah(totalExpense);
+      saldoEl.textContent = formatRupiah(saldo);
+      saldoEl.className = 'mt-2 text-2xl font-bold ' + (saldo >= 0 ? 'text-emerald-700' : 'text-rose-700');
+      saldoLabelEl.textContent = saldo >= 0 ? 'Surplus' : 'Defisit';
+    }
+
+    function applySearch(records) {
+      const q = searchTextEl.value.trim().toLowerCase();
+      if (!q) return records;
+      return records.filter(r => {
+        return (
+          (r.note && r.note.toLowerCase().includes(q)) ||
+          (r.mainCategory && r.mainCategory.toLowerCase().includes(q)) ||
+          (r.subCategory && r.subCategory.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    function renderTable() {
+      const sorted = [...filteredRecords].sort((a, b) => b.date - a.date);
+      const searched = applySearch(sorted);
+
+      const totalPages = Math.max(1, Math.ceil(searched.length / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const pageData = searched.slice(startIdx, startIdx + PAGE_SIZE);
+
+      tableBodyEl.innerHTML = '';
+      pageData.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-slate-100 hover:bg-slate-50';
+        const badgeClass = r.kind === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+        tr.innerHTML = `
+          <td class="px-3 py-2 whitespace-nowrap">
+            ${r.date ? r.date.toLocaleDateString('id-ID', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            }) : '-'}
+          </td>
+          <td class="px-3 py-2">
+            <span class="rounded-full px-2 py-0.5 text-[10px] ${badgeClass}">
+              ${r.kind === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+            </span>
+          </td>
+          <td class="px-3 py-2">
+            ${r.mainCategory || '-'}<br />
+            <span class="text-[10px] text-slate-500">${r.subCategory || ''}</span>
+          </td>
+          <td class="px-3 py-2">${r.note || ''}</td>
+          <td class="px-3 py-2 text-right font-semibold ${r.kind === 'income' ? 'text-emerald-700' : 'text-rose-700'}">
+            ${formatRupiah(r.amount)}
+          </td>
+        `;
+        tableBodyEl.appendChild(tr);
+      });
+
+      statusMsgEl.textContent = `Menampilkan ${pageData.length} dari ${searched.length} transaksi (total: ${allRecords.length}).`;
+      pageInfoEl.textContent = `Hal ${currentPage} / ${totalPages}`;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage === totalPages;
+    }
+
+    // ==========================
+    // CHARTS
+    // ==========================
+    function buildPieData(records) {
+      const map = new Map();
+      records.filter(r => r.kind === 'expense').forEach(r => {
+        const key = r.mainCategory || 'Lainnya';
+        map.set(key, (map.get(key) || 0) + r.amount);
+      });
+      const labels = Array.from(map.keys());
+      const values = Array.from(map.values());
+      const total = values.reduce((a, b) => a + b, 0) || 1;
+      const percLabels = labels.map((l, i) => `${l} (${(values[i] / total * 100).toFixed(1)}%)`);
+      return { labels, values, percLabels };
+    }
+
+    function buildTimeSeriesData(records, mode) {
+      const buckets = new Map();
+      records.forEach(r => {
+        if (!r.date) return;
+        let keyDate;
+        if (mode === 'weekly') keyDate = startOfWeek(r.date);
+        else if (mode === 'monthly') keyDate = startOfMonth(r.date);
+        else keyDate = new Date(r.date.getFullYear(), r.date.getMonth(), r.date.getDate());
+        const key = keyDate.toISOString();
+        if (!buckets.has(key)) {
+          buckets.set(key, { date: keyDate, income: 0, expense: 0 });
+        }
+        const b = buckets.get(key);
+        if (r.kind === 'income') b.income += r.amount; else b.expense += r.amount;
+      });
+      const arr = Array.from(buckets.values()).sort((a, b) => a.date - b.date);
+      return {
+        labels: arr.map(x => x.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' })),
+        income: arr.map(x => x.income),
+        expense: arr.map(x => x.expense)
+      };
+    }
+
+    function renderPieChart(records, type = 'pie') {
+      const ctx = document.getElementById('pieChart').getContext('2d');
+      const { labels, values, percLabels } = buildPieData(records);
+      if (pieChart) pieChart.destroy();
+      const baseConfig = {
+        type: type === 'bar' ? 'bar' : 'pie',
+        data: {
+          labels: percLabels,
+          datasets: [{
+            label: 'Pengeluaran',
+            data: values,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.label}: ${formatRupiah(ctx.parsed)}`
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (!elements.length) return;
+            const index = elements[0].index;
+            const category = labels[index];
+            searchTextEl.value = category;
+            currentPage = 1;
+            renderTable();
+          }
+        }
+      };
+      pieChart = new Chart(ctx, baseConfig);
+    }
+
+    function renderLineChart(records, mode) {
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      const { labels, income, expense } = buildTimeSeriesData(records, mode);
+      if (lineChart) lineChart.destroy();
+      lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Pemasukan', data: income, borderWidth: 2, tension: 0.3 },
+            { label: 'Pengeluaran', data: expense, borderWidth: 2, tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${formatRupiah(ctx.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: {
+                callback: value => formatRupiah(value)
+              }
+            }
+          }
+        }
+      });
+
+      timeseriesSubtitleEl.textContent =
+        mode === 'weekly' ? 'Per minggu' : mode === 'monthly' ? 'Per bulan' : 'Per hari';
+    }
+
+    // ==========================
+    // ANALITIK & INSIGHT
+    // ==========================
+    function renderTopCategories(records) {
+      const map = new Map();
+      records.filter(r => r.kind === 'expense').forEach(r => {
+        const key = r.mainCategory || 'Lainnya';
+        map.set(key, (map.get(key) || 0) + r.amount);
+      });
+      const arr = Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const total = arr.reduce((sum, [, v]) => sum + v, 0) || 1;
+      topCategoriesEl.innerHTML = '';
+      arr.forEach(([name, value]) => {
+        const li = document.createElement('li');
+        const pct = (value / total * 100).toFixed(1);
+        li.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium">${name}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-semibold">${formatRupiah(value)}</p>
+              <p class="text-[11px] text-slate-500">${pct}% dari top 5</p>
+            </div>
+          </div>`;
+        topCategoriesEl.appendChild(li);
+      });
+    }
+
+    function renderInsights(records) {
+      insightListEl.innerHTML = '';
+      const expenses = records.filter(r => r.kind === 'expense');
+      if (!expenses.length) {
+        insightListEl.innerHTML = '<li>Tidak ada pengeluaran pada periode ini.</li>';
+        return;
+      }
+      const totalExpense = expenses.reduce((s, r) => s + r.amount, 0);
+      const map = new Map();
+      expenses.forEach(r => {
+        const key = r.mainCategory || 'Lainnya';
+        map.set(key, (map.get(key) || 0) + r.amount);
+      });
+      const sorted = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+      const [topName, topVal] = sorted[0];
+      const topPct = (topVal / totalExpense * 100).toFixed(1);
+
+      const makeLi = text => {
+        const li = document.createElement('li');
+        li.textContent = text;
+        return li;
+      };
+
+      insightListEl.appendChild(makeLi(`Kategori terbesar saat ini: ${topName} (${formatRupiah(topVal)} / ${topPct}% dari total pengeluaran).`));
+
+      if (topPct > 35) {
+        insightListEl.appendChild(makeLi(`Pengeluaran ${topName} cukup dominan. Coba tentukan batas bulanan dan pantau agar tidak melebihi ${formatRupiah(topVal * 0.8)} di periode berikutnya.`));
+      }
+
+      const avg = totalExpense / expenses.length;
+      insightListEl.appendChild(makeLi(`Rata-rata pengeluaran per transaksi: ${formatRupiah(avg)}.`));
+
+      const makanLuar = ['makan_luar', 'makan luar', 'kuliner'];
+      const makanTotal = expenses
+        .filter(r => r.mainCategory && makanLuar.some(k => r.mainCategory.toLowerCase().includes(k)))
+        .reduce((s, r) => s + r.amount, 0);
+      if (makanTotal > 0) {
+        insightListEl.appendChild(makeLi(`Pengeluaran untuk makan luar/culinary sekitar ${formatRupiah(makanTotal)}. Mengurangi 1–2 kali makan luar per minggu bisa menghemat ±${formatRupiah(makanTotal * 0.2)} per bulan.`));
+      }
+    }
+
+    // ==========================
+    // EXPORT
+    // ==========================
+    function exportTableCSV() {
+      const rows = [['Tanggal', 'Jenis', 'Kategori', 'Sub Kategori', 'Keterangan', 'Nominal']];
+      const sorted = [...filteredRecords].sort((a, b) => b.date - a.date);
+      const searched = applySearch(sorted);
+      searched.forEach(r => {
+        rows.push([
+          r.date ? r.date.toISOString() : '',
+          r.kind === 'income' ? 'Pemasukan' : 'Pengeluaran',
+          r.mainCategory || '',
+          r.subCategory || '',
+          r.note || '',
+          r.amount.toString()
+        ]);
+      });
+      const csvContent = rows.map(r => r.map(field => '"' + String(field).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'transaksi-keuangan.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function printTable() {
+      const win = window.open('', '_blank');
+      if (!win) return;
+      const html = `
+        <html><head><title>Print Transaksi</title>
+        <style>
+          body{font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;font-size:11px;}
+          table{border-collapse:collapse;width:100%;}
+          th,td{border:1px solid #cbd5f5;padding:4px 6px;text-align:left;}
+          th{text-transform:uppercase;font-size:10px;background:#f1f5f9;}
+        </style>
+        </head><body>
+        <h3>Transaksi Keuangan</h3>
+        <p>${subtitleRangeEl.textContent}</p>
+        <table>
+          <thead><tr>
+            <th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Sub Kategori</th><th>Keterangan</th><th>Nominal</th>
+          </tr></thead><tbody>
+          ${[...filteredRecords].sort((a,b)=>b.date-a.date).map(r=>`<tr>
+            <td>${r.date ? r.date.toLocaleString('id-ID') : ''}</td>
+            <td>${r.kind==='income'?'Pemasukan':'Pengeluaran'}</td>
+            <td>${r.mainCategory||''}</td>
+            <td>${r.subCategory||''}</td>
+            <td>${r.note||''}</td>
+            <td style="text-align:right;">${formatRupiah(r.amount)}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        </body></html>`;
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+
+    function exportChartToPNG(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+
+    // ==========================
+    // MAIN RENDER PIPELINE
+    // ==========================
+    function rerenderAll() {
+      const data = applyRange(allRecords);
+      renderSummary(data);
+      currentPage = 1;
+      renderTable();
+      renderPieChart(data, currentPieType);
+      renderLineChart(data, timeSeriesModeEl.value);
+      renderTopCategories(data);
+      renderInsights(data);
+    }
+
+    let currentPieType = 'pie';
+
+    async function loadData() {
+      statusMsgEl.textContent = 'Mengambil data dari NocoDB...';
+      tableBodyEl.innerHTML = '';
+      try {
+        const [rawExp, rawInc] = await Promise.all([
+          fetchFromNoco(API_PENGELUARAN),
+          fetchFromNoco(API_PEMASUKAN)
+        ]);
+        const expenses = rawExp.map(r => normalizeRecord(r, 'expense'));
+        const incomes = rawInc.map(r => normalizeRecord(r, 'income'));
+        allRecords = [...expenses, ...incomes];
+        rerenderAll();
+      } catch (e) {
+        console.error(e);
+        statusMsgEl.textContent = 'Gagal mengambil data dari NocoDB. Cek token / CORS / URL API.';
+      }
+    }
+
+    // ==========================
+    // EVENT LISTENERS
+    // ==========================
+    document.addEventListener('DOMContentLoaded', () => {
+      filterRangeEl.addEventListener('change', () => {
+        startDateEl.value = '';
+        endDateEl.value = '';
+        rerenderAll();
+      });
+      btnApplyCustom.addEventListener('click', () => {
+        filterRangeEl.value = 'all';
+        rerenderAll();
+      });
+      btnRefresh.addEventListener('click', loadData);
+      prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); } });
+      nextPageBtn.addEventListener('click', () => { currentPage++; renderTable(); });
+      searchTextEl.addEventListener('input', () => { currentPage = 1; renderTable(); });
+      timeSeriesModeEl.addEventListener('change', () => renderLineChart(filteredRecords, timeSeriesModeEl.value));
+
+      document.querySelectorAll('.chart-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('bg-slate-900', 'text-white'));
+          btn.classList.add('bg-slate-900', 'text-white');
+          currentPieType = btn.dataset.charttype;
+          renderPieChart(filteredRecords, currentPieType);
+        });
+      });
+
+      document.getElementById('btnExportCSV').addEventListener('click', exportTableCSV);
+      document.getElementById('btnPrint').addEventListener('click', printTable);
+      document.getElementById('btnExportPie').addEventListener('click', () => exportChartToPNG('pieChart', 'pie-pengeluaran.png'));
+      document.getElementById('btnExportLine').addEventListener('click', () => exportChartToPNG('lineChart', 'arus-kas.png'));
+
+      loadData();
+    });
+  </script>
+</body>
+</html>
