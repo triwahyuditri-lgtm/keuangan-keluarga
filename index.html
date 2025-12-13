@@ -6,26 +6,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Konfigurasi Tailwind untuk Dark Mode -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   <style>
-    :root { color-scheme: light; }
-    body { background-color: #f1f5f9; }
+    /* Transisi halus untuk dark mode */
+    body { transition: background-color 0.3s, color 0.3s; }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+    }
+    .dark .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+    }
+    /* Animasi shake untuk PIN salah */
+    .shake { animation: shake 0.5s; }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+    .blur-balance { filter: blur(8px); cursor: pointer; user-select: none; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
-  <div class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+<body class="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+
+  <!-- ========================== -->
+  <!-- LOGIN OVERLAY -->
+  <!-- ========================== -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
+    <div class="w-full max-w-sm p-6 text-center">
+      <h2 class="mb-6 text-2xl font-bold text-slate-800 dark:text-white">Masukkan PIN</h2>
+      
+      <!-- Display PIN dots -->
+      <div class="mb-8 flex justify-center gap-3" id="pinDisplay">
+        <div class="h-4 w-4 rounded-full border-2 border-slate-400 bg-transparent transition-colors"></div>
+        <div class="h-4 w-4 rounded-full border-2 border-slate-400 bg-transparent transition-colors"></div>
+        <div class="h-4 w-4 rounded-full border-2 border-slate-400 bg-transparent transition-colors"></div>
+        <div class="h-4 w-4 rounded-full border-2 border-slate-400 bg-transparent transition-colors"></div>
+      </div>
+
+      <!-- Keypad -->
+      <div class="grid grid-cols-3 gap-4 text-xl font-semibold">
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="1">1</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="2">2</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="3">3</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="4">4</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="5">5</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="6">6</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="7">7</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="8">8</button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="9">9</button>
+        <button id="btnBiometric" class="hidden h-16 w-full items-center justify-center rounded-full text-emerald-600 hover:bg-slate-50 dark:hover:bg-slate-800">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.131A8 8 0 008 8m0 0a8 8 0 00-8 8c0 2.33.322 4.596.916 6.756M15 15a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <button class="pin-btn h-16 w-full rounded-full bg-white shadow-sm hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700" data-val="0">0</button>
+        <button id="pinBackspace" class="h-16 w-full flex items-center justify-center rounded-full text-rose-600 hover:bg-slate-50 dark:hover:bg-slate-800">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l5.94-6.28a4 4 0 015.66 0 4 4 0 010 5.66l-5.94 6.28a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a6 6 0 00-8.49 0 6 6 0 008.49 0z" /> <!-- Fallback icon used x circle but simplified -->
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================== -->
+  <!-- MAIN APP CONTENT -->
+  <!-- ========================== -->
+  <div id="appContent" class="mx-auto max-w-6xl px-4 py-6 space-y-6 hidden">
 
     <!-- HEADER -->
     <header class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 class="text-2xl font-bold">Dashboard Keuangan Keluarga</h1>
-        <p class="text-sm text-slate-600">
-          Data realtime dari NocoDB (pemasukan &amp; pengeluaran).
+        <h1 class="text-2xl font-bold">Dashboard Keuangan</h1>
+        <p class="text-sm text-slate-600 dark:text-slate-400">
+          Data realtime dari NocoDB.
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <!-- Preset range -->
         <select id="filterRange"
-          class="rounded-full border border-slate-300 px-3 py-1.5 text-sm bg-white">
+          class="rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm bg-white dark:bg-slate-800 dark:text-white">
           <option value="mtd">Bulan ini (MTD)</option>
           <option value="today">Hari ini</option>
           <option value="30d">30 hari terakhir</option>
@@ -34,67 +103,89 @@
         </select>
         <!-- Custom range -->
         <div class="flex items-center gap-2 text-xs">
-          <input type="date" id="startDate" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
-          <span class="text-slate-500">s/d</span>
-          <input type="date" id="endDate" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
-          <button id="btnApplyCustom" class="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100">
+          <input type="date" id="startDate" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 dark:text-white dark:color-scheme-dark" />
+          <span class="text-slate-500 dark:text-slate-400">s/d</span>
+          <input type="date" id="endDate" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-800 dark:text-white dark:color-scheme-dark" />
+          <button id="btnApplyCustom" class="rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700">
             Terapkan
           </button>
         </div>
+        
+        <!-- Settings Button -->
+        <button id="btnSettings" class="rounded-full p-2 hover:bg-slate-200 dark:hover:bg-slate-700" title="Pengaturan">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+
         <button id="btnRefresh"
-          class="rounded-full bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700">
-          Refresh Data
+          class="rounded-full bg-slate-900 dark:bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 dark:hover:bg-emerald-700 transition-colors">
+          Refresh
         </button>
       </div>
     </header>
 
     <!-- SUMMARY CARDS -->
     <section class="grid gap-4 md:grid-cols-3">
-      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-        <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Total Pemasukan</p>
-        <p id="totalIncome" class="mt-2 text-2xl font-bold text-emerald-700">Rp 0</p>
+      <div class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+        <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Total Pemasukan</p>
+        <p id="totalIncome" class="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-400 sensitive-data">Rp 0</p>
       </div>
-      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-        <p class="text-xs font-semibold text-rose-600 uppercase tracking-wide">Total Pengeluaran</p>
-        <p id="totalExpense" class="mt-2 text-2xl font-bold text-rose-700">Rp 0</p>
+      <div class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+        <p class="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wide">Total Pengeluaran</p>
+        <p id="totalExpense" class="mt-2 text-2xl font-bold text-rose-700 dark:text-rose-400 sensitive-data">Rp 0</p>
       </div>
-      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
-        <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Saldo</p>
-        <p id="saldo" class="mt-2 text-2xl font-bold">Rp 0</p>
-        <p id="saldoLabel" class="text-xs mt-1 text-slate-500"></p>
+      <div class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700 relative">
+        <div class="flex justify-between items-start">
+          <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Saldo</p>
+          <button id="btnTogglePrivacy" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+             <!-- Icon Eye -->
+             <svg id="iconEyeOpen" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+             </svg>
+             <!-- Icon Eye Slash (hidden by default) -->
+             <svg id="iconEyeClosed" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+             </svg>
+          </button>
+        </div>
+        <p id="saldo" class="mt-2 text-2xl font-bold sensitive-data">Rp 0</p>
+        <p id="saldoLabel" class="text-xs mt-1 text-slate-500 dark:text-slate-400"></p>
       </div>
     </section>
 
     <!-- CHARTS WRAPPER -->
     <section class="grid gap-4 md:grid-cols-5">
       <!-- Pie chart komposisi pengeluaran -->
-      <div class="md:col-span-3 rounded-2xl bg-white p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+      <div class="md:col-span-3 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
         <div class="flex items-center justify-between gap-2">
           <div>
             <p class="text-sm font-semibold">Komposisi Pengeluaran</p>
-            <p class="text-xs text-slate-500">Dibagi berdasarkan kategori utama (mengikuti filter di kanan atas).</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Dibagi berdasarkan kategori utama.</p>
           </div>
           <div class="flex items-center gap-1 text-[11px]">
-            <button data-charttype="pie" class="chart-type-btn rounded-full border border-slate-300 px-2 py-1 bg-slate-900 text-white">Pie</button>
-            <button data-charttype="bar" class="chart-type-btn rounded-full border border-slate-300 px-2 py-1 bg-white">Bar</button>
+            <button data-charttype="pie" class="chart-type-btn rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 bg-slate-900 text-white dark:bg-emerald-600">Pie</button>
+            <button data-charttype="bar" class="chart-type-btn rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-700 dark:text-white">Bar</button>
           </div>
         </div>
         <div class="relative w-full h-64">
           <canvas id="pieChart"></canvas>
         </div>
-        <button id="btnExportPie" class="self-end rounded-full border border-slate-300 px-3 py-1 text-[11px] hover:bg-slate-50">
-          Export Pie ke PNG
+        <button id="btnExportPie" class="self-end rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-700">
+          Export PNG
         </button>
       </div>
 
       <!-- Time-series pemasukan vs pengeluaran -->
-      <div class="md:col-span-2 rounded-2xl bg-white p-4 shadow-sm border border-slate-200 flex flex-col gap-3">
+      <div class="md:col-span-2 rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
         <div class="flex items-center justify-between gap-2">
           <div>
             <p class="text-sm font-semibold">Arus Kas</p>
-            <p class="text-xs text-slate-500" id="timeseriesSubtitle">Per hari</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400" id="timeseriesSubtitle">Per hari</p>
           </div>
-          <select id="timeSeriesMode" class="rounded-full border border-slate-300 px-2 py-1 text-[11px] bg-white">
+          <select id="timeSeriesMode" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 text-[11px] bg-white dark:bg-slate-700 dark:text-white">
             <option value="daily">Harian</option>
             <option value="weekly">Mingguan</option>
             <option value="monthly">Bulanan</option>
@@ -103,53 +194,53 @@
         <div class="relative w-full h-64">
           <canvas id="lineChart"></canvas>
         </div>
-        <button id="btnExportLine" class="self-end rounded-full border border-slate-300 px-3 py-1 text-[11px] hover:bg-slate-50">
-          Export Grafik ke PNG
+        <button id="btnExportLine" class="self-end rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-700">
+          Export Grafik
         </button>
       </div>
     </section>
 
     <!-- ANALITIK & INSIGHT -->
     <section class="grid gap-4 md:grid-cols-3">
-      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200 md:col-span-2">
+      <div class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700 md:col-span-2">
         <div class="flex items-center justify-between mb-2">
           <div>
             <p class="text-sm font-semibold">Top 5 Pengeluaran</p>
-            <p class="text-xs text-slate-500">Per kategori utama pada rentang waktu terpilih.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Per kategori utama pada rentang waktu terpilih.</p>
           </div>
         </div>
         <ul id="topCategories" class="space-y-2 text-xs">
           <!-- diisi via JS -->
         </ul>
       </div>
-      <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+      <div class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700">
         <p class="text-sm font-semibold mb-2">Insight &amp; Saran Hemat</p>
-        <ul id="insightList" class="space-y-2 text-xs text-slate-700">
+        <ul id="insightList" class="space-y-2 text-xs text-slate-700 dark:text-slate-300">
           <!-- diisi via JS -->
         </ul>
       </div>
     </section>
 
-    <!-- TABEL TRANSAKSI GABUNGAN -->
-    <section class="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+    <!-- TABEL TRANSAKSI -->
+    <section class="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200 dark:border-slate-700">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
         <div>
           <p class="text-sm font-semibold">Transaksi</p>
-          <p id="subtitleRange" class="text-xs text-slate-500"></p>
+          <p id="subtitleRange" class="text-xs text-slate-500 dark:text-slate-400"></p>
         </div>
         <div class="flex flex-wrap gap-2 text-[11px] items-center">
           <label class="flex items-center gap-1">
             <span>Cari:</span>
-            <input id="searchText" type="text" placeholder="Keterangan/kategori" class="rounded-full border border-slate-300 px-2 py-1 bg-white" />
+            <input id="searchText" type="text" placeholder="Ket/Kategori" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 bg-white dark:bg-slate-700 dark:text-white" />
           </label>
-          <button id="btnExportCSV" class="rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50">Export CSV</button>
-          <button id="btnPrint" class="rounded-full border border-slate-300 px-3 py-1 hover:bg-slate-50">Print</button>
+          <button id="btnExportCSV" class="rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1 hover:bg-slate-50 dark:hover:bg-slate-700">CSV</button>
+          <button id="btnPrint" class="rounded-full border border-slate-300 dark:border-slate-600 px-3 py-1 hover:bg-slate-50 dark:hover:bg-slate-700">Print</button>
         </div>
       </div>
 
-      <div class="max-h-[420px] overflow-auto rounded-xl border border-slate-200" id="tableScrollWrapper">
+      <div class="max-h-[420px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700" id="tableScrollWrapper">
         <table class="min-w-full text-left text-xs">
-          <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+          <thead class="bg-slate-50 dark:bg-slate-700 text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-300">
             <tr>
               <th class="px-3 py-2">Tanggal</th>
               <th class="px-3 py-2">Jenis</th>
@@ -158,20 +249,62 @@
               <th class="px-3 py-2 text-right">Nominal</th>
             </tr>
           </thead>
-          <tbody id="tableBody" class="text-[11px] text-slate-700">
+          <tbody id="tableBody" class="text-[11px] text-slate-700 dark:text-slate-200">
             <!-- diisi via JS -->
           </tbody>
         </table>
       </div>
-      <div class="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-[11px] text-slate-600">
+      <div class="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-[11px] text-slate-600 dark:text-slate-400">
         <p id="statusMsg"></p>
         <div class="flex items-center gap-2">
-          <button id="prevPage" class="rounded-full border border-slate-300 px-2 py-1 disabled:opacity-40">&laquo;</button>
+          <button id="prevPage" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 disabled:opacity-40">&laquo;</button>
           <span id="pageInfo"></span>
-          <button id="nextPage" class="rounded-full border border-slate-300 px-2 py-1 disabled:opacity-40">&raquo;</button>
+          <button id="nextPage" class="rounded-full border border-slate-300 dark:border-slate-600 px-2 py-1 disabled:opacity-40">&raquo;</button>
         </div>
       </div>
     </section>
+  </div>
+
+  <!-- ========================== -->
+  <!-- SETTINGS MODAL -->
+  <!-- ========================== -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl m-4">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold">Pengaturan</h3>
+        <button id="btnCloseSettings" class="text-slate-500 hover:text-slate-800 dark:hover:text-white">&times;</button>
+      </div>
+      
+      <div class="space-y-4">
+        <!-- Dark Mode Toggle -->
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+          <span class="text-sm font-medium">Mode Gelap (Dark Mode)</span>
+          <button id="toggleDarkMode" class="w-11 h-6 bg-slate-200 rounded-full relative transition-colors focus:outline-none dark:bg-emerald-600">
+            <span class="dot absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform transform translate-x-0 dark:translate-x-5"></span>
+          </button>
+        </div>
+
+        <!-- Biometric Toggle -->
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+          <div>
+            <span class="text-sm font-medium block">Masuk dengan Biometrik</span>
+            <span class="text-xs text-slate-500">Lewati PIN jika diaktifkan</span>
+          </div>
+          <button id="toggleBiometric" class="w-11 h-6 bg-slate-200 rounded-full relative transition-colors focus:outline-none">
+            <span class="dot absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform transform translate-x-0"></span>
+          </button>
+        </div>
+
+        <!-- Change PIN -->
+        <div>
+            <p class="text-sm font-medium mb-2">Ganti PIN Akses</p>
+            <input type="password" id="oldPinInput" placeholder="PIN Lama" class="w-full mb-2 px-3 py-2 text-sm border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+            <input type="number" pattern="[0-9]*" inputmode="numeric" id="newPinInput" placeholder="PIN Baru (4-6 angka)" class="w-full mb-2 px-3 py-2 text-sm border rounded-lg dark:bg-slate-700 dark:border-slate-600">
+            <button id="btnSavePin" class="w-full bg-slate-900 dark:bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold hover:opacity-90">Simpan PIN Baru</button>
+            <p id="pinMsg" class="text-xs mt-1 text-center h-4"></p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Chart.js -->
@@ -179,7 +312,200 @@
 
   <script>
     // ==========================
-    // KONFIGURASI NOCODB
+    // SECURITY & UI SETTINGS
+    // ==========================
+    const DEFAULT_PIN = '1234';
+    let currentPin = localStorage.getItem('app_pin') || DEFAULT_PIN;
+    let isDarkMode = localStorage.getItem('app_dark_mode') === 'true';
+    let isBlurBalance = localStorage.getItem('app_blur_balance') === 'true';
+    let isBiometricEnabled = localStorage.getItem('app_biometric') === 'true';
+    
+    // UI References
+    const appContent = document.getElementById('appContent');
+    const loginOverlay = document.getElementById('loginOverlay');
+    const pinDots = document.querySelectorAll('#pinDisplay div');
+    const sensitiveDataEls = document.querySelectorAll('.sensitive-data');
+    
+    let enteredPin = '';
+
+    function initSettings() {
+        // Apply Dark Mode
+        if (isDarkMode) document.documentElement.classList.add('dark');
+        updateToggleUI('toggleDarkMode', isDarkMode);
+        
+        // Apply Blur
+        updateBlurState();
+        updateEyeIcon();
+
+        // Apply Biometric Toggle UI
+        updateToggleUI('toggleBiometric', isBiometricEnabled);
+        if (isBiometricEnabled) {
+            document.getElementById('btnBiometric').classList.remove('hidden');
+            document.getElementById('btnBiometric').classList.add('flex');
+        }
+    }
+
+    function updateBlurState() {
+        sensitiveDataEls.forEach(el => {
+            if (isBlurBalance) el.classList.add('blur-balance');
+            else el.classList.remove('blur-balance');
+        });
+    }
+
+    function updateEyeIcon() {
+        const open = document.getElementById('iconEyeOpen');
+        const closed = document.getElementById('iconEyeClosed');
+        if (isBlurBalance) {
+            open.classList.add('hidden');
+            closed.classList.remove('hidden');
+        } else {
+            open.classList.remove('hidden');
+            closed.classList.add('hidden');
+        }
+    }
+
+    function updateToggleUI(id, isActive) {
+        const btn = document.getElementById(id);
+        const dot = btn.querySelector('.dot');
+        if (isActive) {
+            btn.classList.add('bg-emerald-500');
+            btn.classList.remove('bg-slate-200');
+            dot.classList.add('translate-x-5');
+            dot.classList.remove('translate-x-0');
+        } else {
+            btn.classList.remove('bg-emerald-500');
+            btn.classList.add('bg-slate-200');
+            dot.classList.remove('translate-x-5');
+            dot.classList.add('translate-x-0');
+        }
+    }
+
+    // PIN Logic
+    document.querySelectorAll('.pin-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (enteredPin.length < 6) {
+                enteredPin += btn.dataset.val;
+                updatePinDisplay();
+                checkPin();
+            }
+        });
+    });
+
+    document.getElementById('pinBackspace').addEventListener('click', () => {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinDisplay();
+    });
+
+    function updatePinDisplay() {
+        // Reset dots style
+        pinDots.forEach(dot => dot.classList.replace('bg-slate-800', 'bg-transparent'));
+        pinDots.forEach(dot => dot.classList.replace('dark:bg-white', 'bg-transparent'));
+        
+        // Fill dots based on length (limit visual to 4, but support longer)
+        for (let i = 0; i < Math.min(enteredPin.length, 4); i++) {
+           pinDots[i].classList.replace('bg-transparent', 'bg-slate-800');
+           pinDots[i].classList.add('dark:bg-white');
+        }
+    }
+
+    function checkPin() {
+        if (enteredPin === currentPin) {
+            unlockApp();
+        } else if (enteredPin.length >= currentPin.length) {
+            // Wrong PIN
+            const container = document.querySelector('#loginOverlay > div');
+            container.classList.add('shake');
+            setTimeout(() => {
+                container.classList.remove('shake');
+                enteredPin = '';
+                updatePinDisplay();
+            }, 500);
+        }
+    }
+
+    function unlockApp() {
+        loginOverlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            loginOverlay.style.display = 'none';
+            appContent.classList.remove('hidden');
+            loadData(); // Load data only after unlock
+        }, 500);
+    }
+
+    // Biometric Logic (Mock)
+    document.getElementById('btnBiometric').addEventListener('click', () => {
+        // In a real app, use navigator.credentials.get()
+        // Here we simulate a successful biometric check
+        const isSupported = true; // Assume supported for demo
+        if (isSupported) {
+             // Simulate delay
+             setTimeout(() => unlockApp(), 300);
+        }
+    });
+
+    // Settings Modal
+    const modal = document.getElementById('settingsModal');
+    document.getElementById('btnSettings').addEventListener('click', () => modal.classList.remove('hidden'));
+    document.getElementById('btnCloseSettings').addEventListener('click', () => modal.classList.add('hidden'));
+
+    // Toggle Dark Mode
+    document.getElementById('toggleDarkMode').addEventListener('click', () => {
+        isDarkMode = !isDarkMode;
+        localStorage.setItem('app_dark_mode', isDarkMode);
+        document.documentElement.classList.toggle('dark');
+        updateToggleUI('toggleDarkMode', isDarkMode);
+    });
+
+    // Toggle Biometric
+    document.getElementById('toggleBiometric').addEventListener('click', () => {
+        isBiometricEnabled = !isBiometricEnabled;
+        localStorage.setItem('app_biometric', isBiometricEnabled);
+        updateToggleUI('toggleBiometric', isBiometricEnabled);
+        if(isBiometricEnabled) {
+             document.getElementById('btnBiometric').classList.remove('hidden');
+             document.getElementById('btnBiometric').classList.add('flex');
+        } else {
+             document.getElementById('btnBiometric').classList.add('hidden');
+        }
+    });
+
+    // Change PIN
+    document.getElementById('btnSavePin').addEventListener('click', () => {
+        const oldP = document.getElementById('oldPinInput').value;
+        const newP = document.getElementById('newPinInput').value;
+        const msg = document.getElementById('pinMsg');
+
+        if (oldP !== currentPin) {
+            msg.textContent = "PIN Lama salah!";
+            msg.className = "text-xs mt-1 text-center h-4 text-rose-500";
+            return;
+        }
+        if (!newP || newP.length < 4) {
+            msg.textContent = "PIN Baru minimal 4 angka.";
+            msg.className = "text-xs mt-1 text-center h-4 text-rose-500";
+            return;
+        }
+        currentPin = newP;
+        localStorage.setItem('app_pin', currentPin);
+        msg.textContent = "PIN berhasil diubah!";
+        msg.className = "text-xs mt-1 text-center h-4 text-emerald-500";
+        document.getElementById('oldPinInput').value = '';
+        document.getElementById('newPinInput').value = '';
+    });
+
+    // Toggle Privacy (Blur)
+    document.getElementById('btnTogglePrivacy').addEventListener('click', () => {
+        isBlurBalance = !isBlurBalance;
+        localStorage.setItem('app_blur_balance', isBlurBalance);
+        updateBlurState();
+        updateEyeIcon();
+    });
+    
+    // Initialize
+    initSettings();
+
+    // ==========================
+    // KONFIGURASI NOCODB (ASLI)
     // ==========================
     const NOCO_TOKEN = 'Ti9jesep2TZLLfY5JeVcaSdXHUO0iTzF5LRvyv98';
 
@@ -216,14 +542,10 @@
       return isNaN(d) ? null : d;
     }
 
-    function isSameDay(a, b) {
-      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-    }
-
     function startOfWeek(d) {
       const date = new Date(d);
       const day = date.getDay();
-      const diff = (day === 0 ? -6 : 1) - day; // Senin awal minggu
+      const diff = (day === 0 ? -6 : 1) - day; 
       date.setDate(date.getDate() + diff);
       date.setHours(0,0,0,0);
       return date;
@@ -355,8 +677,15 @@
       totalIncomeEl.textContent = formatRupiah(totalIncome);
       totalExpenseEl.textContent = formatRupiah(totalExpense);
       saldoEl.textContent = formatRupiah(saldo);
-      saldoEl.className = 'mt-2 text-2xl font-bold ' + (saldo >= 0 ? 'text-emerald-700' : 'text-rose-700');
+      // Adjust color for dark mode (using conditional classes handled in HTML mostly, but here explicitly)
+      // We keep the logic simple: add color classes, but in dark mode we rely on Tailwind dark variants if possible
+      // Since innerHTML overwrites classes, we re-apply:
+      let colorClass = saldo >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400';
+      saldoEl.className = `mt-2 text-2xl font-bold sensitive-data ${colorClass}`;
       saldoLabelEl.textContent = saldo >= 0 ? 'Surplus' : 'Defisit';
+      
+      // Re-apply blur if active
+      updateBlurState();
     }
 
     function applySearch(records) {
@@ -384,8 +713,15 @@
       tableBodyEl.innerHTML = '';
       pageData.forEach(r => {
         const tr = document.createElement('tr');
-        tr.className = 'border-t border-slate-100 hover:bg-slate-50';
-        const badgeClass = r.kind === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+        tr.className = 'border-t border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors';
+        const badgeClass = r.kind === 'income' 
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' 
+            : 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300';
+        
+        const amountClass = r.kind === 'income' 
+            ? 'text-emerald-700 dark:text-emerald-400' 
+            : 'text-rose-700 dark:text-rose-400';
+
         tr.innerHTML = `
           <td class="px-3 py-2 whitespace-nowrap">
             ${r.date ? r.date.toLocaleDateString('id-ID', {
@@ -400,10 +736,10 @@
           </td>
           <td class="px-3 py-2">
             ${r.mainCategory || '-'}<br />
-            <span class="text-[10px] text-slate-500">${r.subCategory || ''}</span>
+            <span class="text-[10px] text-slate-500 dark:text-slate-400">${r.subCategory || ''}</span>
           </td>
           <td class="px-3 py-2">${r.note || ''}</td>
-          <td class="px-3 py-2 text-right font-semibold ${r.kind === 'income' ? 'text-emerald-700' : 'text-rose-700'}">
+          <td class="px-3 py-2 text-right font-semibold ${amountClass}">
             ${formatRupiah(r.amount)}
           </td>
         `;
@@ -459,6 +795,10 @@
       const ctx = document.getElementById('pieChart').getContext('2d');
       const { labels, values, percLabels } = buildPieData(records);
       if (pieChart) pieChart.destroy();
+      
+      // ChartJS Colors for Dark Mode
+      const textColor = isDarkMode ? '#cbd5e1' : '#334155';
+      
       const baseConfig = {
         type: type === 'bar' ? 'bar' : 'pie',
         data: {
@@ -466,19 +806,31 @@
           datasets: [{
             label: 'Pengeluaran',
             data: values,
+            backgroundColor: [
+              '#10b981', '#f43f5e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'
+            ],
+            borderColor: isDarkMode ? '#1e293b' : '#ffffff',
+            borderWidth: 2
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { 
+                position: 'bottom',
+                labels: { color: textColor }
+            },
             tooltip: {
               callbacks: {
                 label: ctx => `${ctx.label}: ${formatRupiah(ctx.parsed)}`
               }
             }
           },
+          scales: type === 'bar' ? {
+              x: { ticks: { color: textColor }, grid: { color: isDarkMode ? '#334155' : '#e2e8f0' } },
+              y: { ticks: { color: textColor }, grid: { color: isDarkMode ? '#334155' : '#e2e8f0' } }
+          } : {},
           onClick: (e, elements) => {
             if (!elements.length) return;
             const index = elements[0].index;
@@ -496,20 +848,27 @@
       const ctx = document.getElementById('lineChart').getContext('2d');
       const { labels, income, expense } = buildTimeSeriesData(records, mode);
       if (lineChart) lineChart.destroy();
+      
+      const textColor = isDarkMode ? '#cbd5e1' : '#334155';
+      const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+
       lineChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
           datasets: [
-            { label: 'Pemasukan', data: income, borderWidth: 2, tension: 0.3 },
-            { label: 'Pengeluaran', data: expense, borderWidth: 2, tension: 0.3 }
+            { label: 'Pemasukan', data: income, borderWidth: 2, tension: 0.3, borderColor: '#10b981', backgroundColor: '#10b981' },
+            { label: 'Pengeluaran', data: expense, borderWidth: 2, tension: 0.3, borderColor: '#f43f5e', backgroundColor: '#f43f5e' }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { 
+                position: 'bottom',
+                labels: { color: textColor }
+            },
             tooltip: {
               callbacks: {
                 label: ctx => `${ctx.dataset.label}: ${formatRupiah(ctx.parsed.y)}`
@@ -517,10 +876,16 @@
             }
           },
           scales: {
+            x: {
+              ticks: { color: textColor },
+              grid: { color: gridColor }
+            },
             y: {
               ticks: {
+                color: textColor,
                 callback: value => formatRupiah(value)
-              }
+              },
+              grid: { color: gridColor }
             }
           }
         }
@@ -548,11 +913,11 @@
         li.innerHTML = `
           <div class="flex items-center justify-between">
             <div>
-              <p class="font-medium">${name}</p>
+              <p class="font-medium text-slate-700 dark:text-slate-200">${name}</p>
             </div>
             <div class="text-right">
-              <p class="font-semibold">${formatRupiah(value)}</p>
-              <p class="text-[11px] text-slate-500">${pct}% dari top 5</p>
+              <p class="font-semibold text-slate-800 dark:text-slate-100">${formatRupiah(value)}</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">${pct}% dari top 5</p>
             </div>
           </div>`;
         topCategoriesEl.appendChild(li);
@@ -725,8 +1090,8 @@
 
       document.querySelectorAll('.chart-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('bg-slate-900', 'text-white'));
-          btn.classList.add('bg-slate-900', 'text-white');
+          document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('bg-slate-900', 'text-white', 'dark:bg-emerald-600'));
+          btn.classList.add('bg-slate-900', 'text-white', 'dark:bg-emerald-600');
           currentPieType = btn.dataset.charttype;
           renderPieChart(filteredRecords, currentPieType);
         });
@@ -737,7 +1102,9 @@
       document.getElementById('btnExportPie').addEventListener('click', () => exportChartToPNG('pieChart', 'pie-pengeluaran.png'));
       document.getElementById('btnExportLine').addEventListener('click', () => exportChartToPNG('lineChart', 'arus-kas.png'));
 
-      loadData();
+      // NOTE: loadData() is called after PIN unlock now, not immediately here
+      // But we call initSettings() to restore previous theme state instantly
+      initSettings();
     });
   </script>
 </body>
